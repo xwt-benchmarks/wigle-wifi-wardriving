@@ -4,11 +4,6 @@ apply plugin: 'signing'
 
 group = 'com.google.maps.android'
 
-dependencies {
-    implementation 'com.google.android.gms:play-services-maps:17.0.0'
-}
-
-
 android {
     compileSdkVersion 29
     buildToolsVersion '28.0.3'
@@ -32,12 +27,63 @@ android {
         }
     }
 
+    buildTypes {
+        checkTypes {
+            javaCompileOptions.annotationProcessorOptions.
+                    classNames.add("org.checkerframework.checker.keystore.KeyStoreChecker")
+            // Uncomment to do the strongboxbacked checking.
+            // javaCompileOptions.annotationProcessorOptions.arguments.put("lint", "strongboxbacked")
+            javaCompileOptions.annotationProcessorOptions.arguments.put("stubs", "hardwarebacked.astub")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
+    }
+
     // This enables long timeouts required on slow environments, e.g. Travis
     adbOptions {
         timeOutInMs 10 * 60 * 1000  // 10 minutes
         installOptions "-d","-t"
     }
 
+}
+
+repositories {
+    mavenLocal()
+}
+
+configurations {
+    checkerFrameworkAnnotatedJDK {
+        description = 'a copy of JDK classes with Checker Framework type qualifiers inserted'
+    }
+    errorproneJavac {
+        description = 'required to run the Checker Framework.'
+    }
+}
+
+dependencies {
+    implementation 'com.google.android.gms:play-services-maps:17.0.0'
+
+    ext.checkerFrameworkVersion = '3.1.1'
+    annotationProcessor "org.checkerframework:keystore-checker:0.1-SNAPSHOT"
+    implementation files("../../../../keystore-checker-qual-android/build/libs/keystore-checker-qual-android.jar")
+    checkerFrameworkAnnotatedJDK files("../../../../jdk8.jar")
+    compileOnly "org.checkerframework:checker-qual-android:${checkerFrameworkVersion}"
+    errorproneJavac 'com.google.errorprone:javac:9+181-r4173-1'
+}
+
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile).all { compile ->
+        if (compile.name.contains("CheckTypes")) {
+            compile.options.compilerArgs += [
+                    "-Xbootclasspath/p:${configurations.checkerFrameworkAnnotatedJDK.asPath}"
+            ]
+            options.fork = true
+            options.forkOptions.jvmArgs += ["-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"]
+        }
+    }
 }
 
 task instrumentTest(dependsOn: connectedCheck)
