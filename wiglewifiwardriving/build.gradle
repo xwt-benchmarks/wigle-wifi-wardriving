@@ -50,9 +50,6 @@ repositories {
 }
 
 configurations {
-    checkerFrameworkAnnotatedJDK {
-        description = 'a copy of JDK classes with Checker Framework type qualifiers inserted'
-    }
     errorproneJavac {
         description = 'required to run the Checker Framework.'
     }
@@ -68,7 +65,6 @@ dependencies {
     ext.checkerFrameworkVersion = '3.1.1'
     annotationProcessor "org.checkerframework:crypto-checker:0.1-SNAPSHOT"
     implementation files("../../../../crypto-checker-qual-android/build/libs/crypto-checker-qual-android.jar")
-    checkerFrameworkAnnotatedJDK files("../../../../jdk8.jar")
     compileOnly "org.checkerframework:checker-qual-android:${checkerFrameworkVersion}"
     errorproneJavac 'com.google.errorprone:javac:9+181-r4173-1'
 }
@@ -76,9 +72,6 @@ dependencies {
 gradle.projectsEvaluated {
     tasks.withType(JavaCompile).all { compile ->
         if (compile.name.contains("CheckTypes")) {
-            compile.options.compilerArgs += [
-                    "-Xbootclasspath/p:${configurations.checkerFrameworkAnnotatedJDK.asPath}"
-            ]
             options.fork = true
             options.forkOptions.jvmArgs += ["-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"]
         }
